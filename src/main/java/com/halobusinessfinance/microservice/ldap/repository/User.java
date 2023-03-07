@@ -12,12 +12,6 @@ package com.halobusinessfinance.microservice.ldap.repository;
 // Importing class
 import lombok.Data;
 
-/*
-String accountSID = attributes.get("uid").get().toString();
-                String accountToken = attributes.get("employeeNumber").get().toString();
-                String telephoneNumber = attributes.get("telephoneNumber").get().toString();
-*/
-
 
 @Data
 public class User {
@@ -26,13 +20,27 @@ public class User {
     private String accountSID;
     private String accountToken;
     private String telephoneNumber;
+    private String email;
+    private String code;
+    private Payload payload;
     
     
     
-     public User(String username, String password) {
+    
+    
+     public User(String username, String password, String code) {
         this.username = username;
         this.password = password;
+        
     }
+     
+     public Payload getPayload() {
+         return payload;
+     }
+     
+     public void setPayload(Payload payload) {
+         this.payload = payload;
+     }
     
     
     

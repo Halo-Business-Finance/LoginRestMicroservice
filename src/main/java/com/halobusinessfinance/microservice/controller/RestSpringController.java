@@ -10,6 +10,7 @@ package com.halobusinessfinance.microservice.controller;
  */
 import com.halobusinessfinance.microservice.ldap.data.client.LdapClient;
 import static com.halobusinessfinance.microservice.ldap.data.client.LdapClient.digestSHA;
+import com.halobusinessfinance.microservice.ldap.repository.Payload;
 import com.halobusinessfinance.microservice.ldap.repository.User;
 import com.halobusinessfinance.microservice.ldap.repository.UserLdap;
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @SpringBootApplication
 @CrossOrigin(origins = "*")
-public abstract class RestSpringController {
+public class RestSpringController {
 
    
     @Autowired
@@ -81,7 +82,7 @@ public abstract class RestSpringController {
         String searchFilter = "cn=michaelr";
         SearchControls controls = new SearchControls();
         controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
-        controls.setReturningAttributes(new String[]{"uid", "employeeNumber","telephoneNumber"});
+        controls.setReturningAttributes(new String[]{"uid", "employeeNumber","telephoneNumber,mail"});
         try {
             NamingEnumeration<SearchResult> results = context.search("ou=users," +
                  env.getRequiredProperty("ldap.partitionSuffix"), searchFilter, controls);
@@ -91,6 +92,7 @@ public abstract class RestSpringController {
                 user.setAccountSID(attributes.get("uid").get().toString());
                 user.setAccountToken(attributes.get("employeeNumber").get().toString());
                 user.setTelephoneNumber(attributes.get("telephoneNumber").get().toString());
+                user.setEmail(attributes.get("mail").get().toString());
 
             }
         } catch (NamingException ex) {
@@ -112,6 +114,47 @@ public abstract class RestSpringController {
         responseMap.put("accountSID", user.getAccountSID());
         responseMap.put("accountToken", user.getAccountToken());
         responseMap.put("telephoneNumber", user.getTelephoneNumber());
+       // responseMap.put("Payload.access_token", "12345");
+      //  responseMap.put("Payload.access_token", "12345");
+
+        return ResponseEntity.ok(responseMap);
+    }
+    
+    @PostMapping(path = "/auth/token", produces = "application/json")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<Object> token(@RequestBody User user) {
+        
+        //call Twilio - return access_token
+        /*
+     public Payload (String accessToken,
+                    String username,
+                    String email,
+                    String userid,
+                    String firstName,
+                    String lastName,
+                    String phone)
+    
+        */
+        
+        
+        
+        
+     Payload payload = new Payload("eW91ciB0b2tlbiBpcyBhIHRva2VuIGZvciBhIGJhc2U2NCBlbmNvZGVkIHRva2VuLg==",
+                                      "Michael Ritchson",
+                                      "michaelr@halobusinessfinance.com",
+                                      "michaelr",
+                                      "Michael",
+                                      "Ritchson",
+                                      "661-770-5021");
+        
+        user.setPayload(payload);
+        
+        
+        Map<String, Object> responseMap = new HashMap<>();
+        
+    
+        responseMap.put("isSuccess", "true");
+        responseMap.put("Payload", user.getPayload());
 
         return ResponseEntity.ok(responseMap);
     }
