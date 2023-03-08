@@ -4,89 +4,93 @@
  */
 package com.halobusinessfinance.microservice.ldap.data.client;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
-import org.springframework.ldap.core.*;
-import org.springframework.ldap.support.LdapNameBuilder;
-
-import javax.naming.Name;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
-import java.util.List;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
+import com.halobusinessfinance.microservice.controller.RestSpringController;
+import com.halobusinessfinance.microservice.ldap.repository.User;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
+import org.springframework.ldap.core.ContextSource;
+import org.springframework.ldap.core.support.LdapContextSource;
 
 public class LdapClient {
 
-    @Autowired
-    private Environment env;
+    private DirContext context;
 
-    @Autowired
-    private ContextSource contextSource;
+    public DirContext authenticate(String path,
+            String password,
+            LdapContextSource contextSource) {
+          // Initialize the context source
+        contextSource.afterPropertiesSet();
 
-    @Autowired
-    private LdapTemplate ldapTemplate;
-    
-    
-  
-    public void authenticate(final String username, final String password) {
-        contextSource.getContext("cn=" + username + ",ou=users," + env.getRequiredProperty("ldap.partitionSuffix"), digestSHA(password));
+        // Use the context source to perform LDAP operations
+        ContextSource ldapContextSource = contextSource;
+        
+        context = ldapContextSource.getContext(path, password);//dc=example,dc=org
+
+        return context;
     }
 
-    public List<String> search(final String username) {
-        return ldapTemplate.search(
-          "ou=users",
-          "cn=" + username,
-          (AttributesMapper<String>) attrs -> (String) attrs
-          .get("cn")
-          .get());
-    }
+    public User search(String path,
+            String password,
+            String searchFilterCN,
+            LdapContextSource contextSource,
+            String partitionSuffix) {
+        context = this.authenticate(path, password, contextSource);
 
-    public void create(final String username, final String password) {
-        Name dn = LdapNameBuilder
-          .newInstance()
-          .add("ou", "users")
-          .add("cn", username)
-          .build();
-        DirContextAdapter context = new DirContextAdapter(dn);
-
-        context.setAttributeValues("objectclass", new String[] { "top", "person", "organizationalPerson", "inetOrgPerson" });
-        context.setAttributeValue("cn", username);
-        context.setAttributeValue("sn", username);
-        context.setAttributeValue("userPassword", digestSHA(password));
-
-        ldapTemplate.bind(context);
-    }
-
-    public void modify(final String username, final String password) {
-        Name dn = LdapNameBuilder
-          .newInstance()
-          .add("ou", "users")
-          .add("cn", username)
-          .build();
-        DirContextOperations context = ldapTemplate.lookupContext(dn);
-
-        context.setAttributeValues("objectclass", new String[] { "top", "person", "organizationalPerson", "inetOrgPerson" });
-        context.setAttributeValue("cn", username);
-        context.setAttributeValue("sn", username);
-        context.setAttributeValue("userPassword", digestSHA(password));
-
-        ldapTemplate.modifyAttributes(context);
-    }
-
-    public static String digestSHA(final String password) {
-        String base64;
+        User user = new User();
+        // String searchFilter = "cn=michaelr";
+        SearchControls controls = new SearchControls();
+        controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+        controls.setReturningAttributes(new String[]{"uid", 
+                                                     "employeeNumber",
+                                                     "displayName",
+                                                     "givenName",
+                                                     "mail",
+                                                     "telephoneNumber",
+                                                     "sn",
+                                                     "cn"});
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA");
-            digest.update(password.getBytes());
-            base64 = Base64
-              .getEncoder()
-              .encodeToString(digest.digest());
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            NamingEnumeration<SearchResult> results = context.search("ou=users,"
+                    + partitionSuffix, searchFilterCN, controls);
+            while (results.hasMoreElements()) {
+                SearchResult result = (SearchResult) results.nextElement();
+                Attributes attributes = result.getAttributes();
+                user.setAccountSID(attributes.get("uid").get().toString());
+                user.setAccountToken(attributes.get("employeeNumber").get().toString());
+                user.setDisplayName(attributes.get("displayName").get().toString());
+                user.setFirstName(attributes.get("givenName").get().toString());
+                user.setEmail(attributes.get("mail").get().toString());
+                user.setTelephoneNumber(attributes.get("telephoneNumber").get().toString());
+                user.setLastName(attributes.get("sn").get().toString());
+                user.setUsername(attributes.get("cn").get().toString());
+                /*
+                private String telephoneNumber;
+                private String email;
+                private String code;
+                private Payload payload;
+                private String firstName;
+                private String lastName;
+                private String userid;
+                */
+                
+
+            }
+        } catch (NamingException ex) {
+            Logger.getLogger(RestSpringController.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                context.close();
+            } catch (NamingException ex) {
+                Logger.getLogger(RestSpringController.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
-        return "{SHA}" + base64;
+
+        return user;
     }
+
 }

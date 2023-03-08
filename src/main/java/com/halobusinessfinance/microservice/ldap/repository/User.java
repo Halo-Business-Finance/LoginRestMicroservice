@@ -23,9 +23,15 @@ public class User {
     private String email;
     private String code;
     private Payload payload;
+    private String firstName;
+    private String lastName;
+    private String userid;
+    private String displayName;
     
     
-    
+    public User() {
+        
+    }
     
     
      public User(String username, String password, String code) {

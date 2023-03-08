@@ -8,14 +8,11 @@ package com.halobusinessfinance.microservice.controller;
  *
  * @author root
  */
+import com.halobusinessfinance.microservice.ldap.config.LdapConfig;
 import com.halobusinessfinance.microservice.ldap.data.client.LdapClient;
-import static com.halobusinessfinance.microservice.ldap.data.client.LdapClient.digestSHA;
 import com.halobusinessfinance.microservice.ldap.repository.Payload;
 import com.halobusinessfinance.microservice.ldap.repository.User;
-import com.halobusinessfinance.microservice.ldap.repository.UserLdap;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,9 +28,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.ContextSource;
-import org.springframework.ldap.core.LdapTemplate;
+import org.springframework.ldap.core.support.LdapContextSource;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,114 +41,116 @@ import org.springframework.web.bind.annotation.RestController;
 @CrossOrigin(origins = "*")
 public class RestSpringController {
 
-   
     @Autowired
     private Environment env;
 
-    @Autowired
-    private ContextSource contextSource;
+    //@Autowired
+    //private LdapContextSource contextSource;
 
     private DirContext context;
 
+    Map<String, String> responseMap;
+    Map<String, String> userMap;
+
     public static void main(String[] args) {
         SpringApplication.run(RestSpringController.class, args);
-    }
-    
-    private DirContext authenticate(String path, String password) {
-        context = contextSource.getContext(path, password);//dc=example,dc=org
-
-        return context;
     }
 
     @PostMapping(path = "/auth/request-for-code", produces = "application/json")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Object> requestForCode(@RequestBody User user) {
         //get account sid and account token
-        String path =  "cn="
+        LdapClient ldapclient = new LdapClient();
+        
+        LdapConfig config = new LdapConfig();
+        LdapContextSource contextSource = config.contextSource(env);
+
+        String path = "cn="
                 + user.getUsername()
                 + ",ou=users,"
                 + env.getRequiredProperty("ldap.partitionSuffix");
-        context = authenticate(path, user.getPassword());//authenticate the user first, 
         
         
-        path =  "cn=" + env.getRequiredProperty("ldap.principal") + "," 
+        context = ldapclient.authenticate(path, user.getPassword(), contextSource);//authenticate the user first, 
+        
+        path = "cn=" + env.getRequiredProperty("ldap.principal") + ","
                 + env.getRequiredProperty("ldap.partitionSuffix");
-        context = authenticate(path, env.getRequiredProperty("ldap.password"));//authenticate the pricipal to perform ldap tasks
-      
-        String searchFilter = "cn=michaelr";
-        SearchControls controls = new SearchControls();
-        controls.setSearchScope(SearchControls.SUBTREE_SCOPE);
-        controls.setReturningAttributes(new String[]{"uid", "employeeNumber","telephoneNumber,mail"});
-        try {
-            NamingEnumeration<SearchResult> results = context.search("ou=users," +
-                 env.getRequiredProperty("ldap.partitionSuffix"), searchFilter, controls);
-            while (results.hasMoreElements()) {
-                SearchResult result = (SearchResult) results.nextElement();
-                Attributes attributes = result.getAttributes();
-                user.setAccountSID(attributes.get("uid").get().toString());
-                user.setAccountToken(attributes.get("employeeNumber").get().toString());
-                user.setTelephoneNumber(attributes.get("telephoneNumber").get().toString());
-                user.setEmail(attributes.get("mail").get().toString());
 
-            }
-        } catch (NamingException ex) {
-            Logger.getLogger(RestSpringController.class.getName()).log(Level.SEVERE, null, ex);
-        }finally{
-            try {
-                context.close();
-            } catch (NamingException ex) {
-                Logger.getLogger(RestSpringController.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-
-        //create api call to twilio to send accountSID, AccountToken, telephoneNumber
+        StringBuilder searchFilterCN = new StringBuilder();
+        searchFilterCN.append("cn=");
+        searchFilterCN.append(user.getUsername());
+        user = ldapclient.search(path,
+                env.getRequiredProperty("ldap.password"),
+                searchFilterCN.toString(),
+                contextSource,
+                env.getRequiredProperty("ldap.partitionSuffix"));
         
-       //return JSON
-        Map<String, String> responseMap = new HashMap<>();
         
-        responseMap.put("isSuccess", "true");
+        //call twilio java api to send code
+        /*
         responseMap.put("accountSID", user.getAccountSID());
         responseMap.put("accountToken", user.getAccountToken());
-        responseMap.put("telephoneNumber", user.getTelephoneNumber());
-       // responseMap.put("Payload.access_token", "12345");
-      //  responseMap.put("Payload.access_token", "12345");
+        telephonenumber
+        */
+        
+        Map<String, String> responseMap = new HashMap<>();
+
+        responseMap.put("isSuccess", "true");
+        //responseMap.put("accountSID", user.getAccountSID());
+        //responseMap.put("accountToken", user.getAccountToken());
 
         return ResponseEntity.ok(responseMap);
     }
-    
+
     @PostMapping(path = "/auth/token", produces = "application/json")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Object> token(@RequestBody User user) {
+        LdapClient ldapclient = new LdapClient();
+        LdapConfig config = new LdapConfig();
+        LdapContextSource contextSource = config.contextSource(env);
+        //ldap
+        String path = "cn=" + env.getRequiredProperty("ldap.principal") + ","
+                + env.getRequiredProperty("ldap.partitionSuffix");
+
+        StringBuilder searchFilterCN = new StringBuilder();
+        searchFilterCN.append("cn=");
+        searchFilterCN.append(user.getUsername());
+        user = ldapclient.search(path,
+                env.getRequiredProperty("ldap.password"),
+                searchFilterCN.toString(),
+                contextSource,
+                env.getRequiredProperty("ldap.partitionSuffix"));
         
-        //call Twilio - return access_token
-        /*
-     public Payload (String accessToken,
-                    String username,
-                    String email,
-                    String userid,
-                    String firstName,
-                    String lastName,
-                    String phone)
-    
-        */
-        
-        
-        
-        
-     Payload payload = new Payload("eW91ciB0b2tlbiBpcyBhIHRva2VuIGZvciBhIGJhc2U2NCBlbmNvZGVkIHRva2VuLg==",
+       
+        /*Payload payload = new Payload("eW91ciB0b2tlbiBpcyBhIHRva2VuIGZvciBhIGJhc2U2NCBlbmNvZGVkIHRva2VuLg==",
                                       "Michael Ritchson",
                                       "michaelr@halobusinessfinance.com",
                                       "michaelr",
                                       "Michael",
                                       "Ritchson",
                                       "661-770-5021");
-        
+        String accessToken,
+                    String username,
+                    String email,
+                    String userid,
+                    String firstName,
+                    String lastName,
+                    String phone
+         */
+         //call Twilio - authenticate send code
+         Payload payload = new Payload("eW91ciB0b2tlbiBpcyBhIHRva2VuIGZvciBhIGJhc2U2NCBlbmNvZGVkIHRva2VuLg==",
+                                      user.getDisplayName(),
+                                      user.getEmail(),
+                                      user.getUsername(),
+                                      user.getFirstName(),
+                                      user.getLastName(),
+                                      user.getTelephoneNumber());
+
+
         user.setPayload(payload);
-        
-        
+
         Map<String, Object> responseMap = new HashMap<>();
-        
-    
+
         responseMap.put("isSuccess", "true");
         responseMap.put("Payload", user.getPayload());
 

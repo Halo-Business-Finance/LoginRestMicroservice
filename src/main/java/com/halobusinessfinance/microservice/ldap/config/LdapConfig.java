@@ -23,20 +23,18 @@ import org.springframework.ldap.core.support.LdapContextSource;
 //@EnableLdapRepositories(basePackages = "com.halobusinessfinance.microservice.ldap.**")
 public class LdapConfig {
 
-    @Autowired
-    private Environment env;
-
+  
     @Bean
-    public LdapContextSource contextSource() {
+    public LdapContextSource contextSource(Environment env) {
         LdapContextSource contextSource = new LdapContextSource();
 
         contextSource.setUrl(env.getRequiredProperty("ldap.url"));
-        contextSource.setBase(
-                env.getRequiredProperty("ldap.partitionSuffix"));
-        contextSource.setUserDn(
-                env.getRequiredProperty("ldap.username"));
-        contextSource.setPassword(
-                env.getRequiredProperty("ldap.password"));
+        //contextSource.setBase(
+        //        env.getRequiredProperty("ldap.partitionSuffix"));
+        //contextSource.setUserDn(
+        //        env.getRequiredProperty("ldap.username"));
+        //contextSource.setPassword(
+        //        env.getRequiredProperty("ldap.password"));
 
         /*contextSource.setUrl("ldap://45.79.102.106:389");
         contextSource.setBase("dc=halobusinessfinance,dc=com");
