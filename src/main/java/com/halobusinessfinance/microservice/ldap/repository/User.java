@@ -10,6 +10,7 @@ package com.halobusinessfinance.microservice.ldap.repository;
  */
 
 // Importing class
+import com.twilio.rest.api.v2010.account.Message;
 import lombok.Data;
 
 
@@ -18,8 +19,9 @@ public class User {
     private String username;
     private String password;
     private String accountSID;
-    private String accountToken;
-    private String telephoneNumber;
+    private String authToken;
+    private String twilioNumber;
+    private String phoneNumber;
     private String email;
     private String code;
     private Payload payload;
@@ -27,6 +29,7 @@ public class User {
     private String lastName;
     private String userid;
     private String displayName;
+    private Message message;
     
     
     public User() {
@@ -34,9 +37,24 @@ public class User {
     }
     
     
-     public User(String username, String password, String code) {
+     public User(String username, 
+                 String password, 
+                 String code) {
         this.username = username;
         this.password = password;
+        
+    }
+     
+     public User(String displayName, 
+                 String email,
+                 String firstName,
+                 String lastName,
+                 String phoneNumber) {
+        this.displayName = displayName;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber;
         
     }
      

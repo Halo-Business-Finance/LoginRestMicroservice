@@ -52,6 +52,7 @@ public class LdapClient {
                                                      "givenName",
                                                      "mail",
                                                      "telephoneNumber",
+                                                     "mobile",
                                                      "sn",
                                                      "cn"});
         try {
@@ -61,11 +62,12 @@ public class LdapClient {
                 SearchResult result = (SearchResult) results.nextElement();
                 Attributes attributes = result.getAttributes();
                 user.setAccountSID(attributes.get("uid").get().toString());
-                user.setAccountToken(attributes.get("employeeNumber").get().toString());
+                user.setAuthToken(attributes.get("employeeNumber").get().toString());
                 user.setDisplayName(attributes.get("displayName").get().toString());
                 user.setFirstName(attributes.get("givenName").get().toString());
                 user.setEmail(attributes.get("mail").get().toString());
-                user.setTelephoneNumber(attributes.get("telephoneNumber").get().toString());
+                user.setTwilioNumber(attributes.get("telephoneNumber").get().toString());
+                user.setPhoneNumber(attributes.get("mobile").get().toString());
                 user.setLastName(attributes.get("sn").get().toString());
                 user.setUsername(attributes.get("cn").get().toString());
                 /*
