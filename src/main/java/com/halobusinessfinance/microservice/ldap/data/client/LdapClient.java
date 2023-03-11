@@ -23,7 +23,7 @@ public class LdapClient {
 
     public DirContext authenticate(String path,
             String password,
-            LdapContextSource contextSource) {
+            LdapContextSource contextSource) throws Exception{
           // Initialize the context source
         contextSource.afterPropertiesSet();
 
@@ -39,7 +39,7 @@ public class LdapClient {
             String password,
             String searchFilterCN,
             LdapContextSource contextSource,
-            String partitionSuffix) {
+            String partitionSuffix) throws Exception {
         context = this.authenticate(path, password, contextSource);
 
         User user = new User();

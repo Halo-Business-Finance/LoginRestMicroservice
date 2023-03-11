@@ -62,8 +62,13 @@ public class RestSpringController {
                 + user.getUsername()
                 + ",ou=users,"
                 + env.getRequiredProperty("ldap.partitionSuffix");
-
-        context = ldapclient.authenticate(path, user.getPassword(), contextSource);//authenticate the user first, 
+        try {
+            context = ldapclient.authenticate(path, user.getPassword(), contextSource);//authenticate the user first, 
+        } catch (Exception e) {
+            responseMap.put("isError", "true");
+            responseMap.put("reason", "Invalid credentials please retry");
+            return ResponseEntity.ok(responseMap);
+        }
 
         path = "cn=" + env.getRequiredProperty("ldap.principal") + ","
                 + env.getRequiredProperty("ldap.partitionSuffix");
@@ -71,25 +76,21 @@ public class RestSpringController {
         StringBuilder searchFilterCN = new StringBuilder();
         searchFilterCN.append("cn=");
         searchFilterCN.append(user.getUsername());
-        user = ldapclient.search(path,
-                env.getRequiredProperty("ldap.password"),
-                searchFilterCN.toString(),
-                contextSource,
-                env.getRequiredProperty("ldap.partitionSuffix"));
-        //populate user account information
-        TwilioClient t = new TwilioClient(user);
-
-        //call twilio java api to send code
-        Message message = t.sendCode();
-        responseMap = new HashMap<>();
-        if (message != null) {
-            responseMap.put("isSuccess", "true");
-            responseMap.put("message", message.getAccountSid());
-            responseMap.put("message", message.getSid());
-        } else {
-            responseMap.put("isSuccess", "false");
-            responseMap.put("reason", "error sending code");
+        try {
+            user = ldapclient.search(path,
+                    env.getRequiredProperty("ldap.password"),
+                    searchFilterCN.toString(),
+                    contextSource,
+                    env.getRequiredProperty("ldap.partitionSuffix"));
+        } catch (Exception e) {
+            responseMap.put("isError", "true");
+            responseMap.put("reason", "user not found");
+            return ResponseEntity.ok(responseMap);
         }
+
+        //responseMap
+        responseMap = (user != null)
+                ? RestControllerResponses.processAuthenticationToTwilio(user) : RestControllerResponses.failedLdapAuthentication();
 
         return ResponseEntity.ok(responseMap);
     }
@@ -107,24 +108,7 @@ public class RestSpringController {
         String code = twilioUser.getCode();
         if (code.equals(user.getCode())) {
             Message message = (Message) twilioUser.getMessage();
-            //were be good on the code
-            //contunue
-            /*LdapClient ldapclient = new LdapClient();
-            LdapConfig config = new LdapConfig();
-            LdapContextSource contextSource = config.contextSource(env);
-            //ldap
-            String path = "cn=" + env.getRequiredProperty("ldap.principal") + ","
-                    + env.getRequiredProperty("ldap.partitionSuffix");
 
-            StringBuilder searchFilterCN = new StringBuilder();
-            searchFilterCN.append("cn=");
-            searchFilterCN.append(user.getUsername());
-            user = ldapclient.search(path,
-                    env.getRequiredProperty("ldap.password"),
-                    searchFilterCN.toString(),
-                    contextSource,
-                    env.getRequiredProperty("ldap.partitionSuffix"));
-             */
             String access_token = message.getSid();
             Payload payload = new Payload(access_token,
                     twilioUser.getDisplayName(),
