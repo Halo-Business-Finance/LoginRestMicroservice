@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.so</groupId>
-    <artifactId>rest-ldap</artifactId>
+    <artifactId>rest-login</artifactId>
     <version>1.0.1</version>
-    <name>rest-ldap</name>
-    <description>SO REST LDAP Solution</description>
+    <name>LoginRestMicroservice</name>
+    <description>rest login microservice contains: LDAP, Twilio API</description>
 
     <properties>
         <java.version>1.8</java.version>
